@@ -87,6 +87,66 @@ class NewVisitorTest(LiveServerTestCase):
 
 		# Satisfeita, ela volta a dormir
 
+		# Edith ouviu falar que agora a aplicação online de lista de tarefas
+
+		# aceita definir prioridades nas tarefas do tipo baixa, média e alta
+
+		# Ela decide verificar a homepage
+
+		 
+
+		# Ela percebe que o título da página e o cabeçalho mencionam
+
+		# listas de tarefas com prioridade (priority to-do)
+
+		 
+
+		# Ela é convidada a inserir um item de tarefa e a prioridade da 
+
+		# mesma imediatamente
+
+		 
+
+		# Ela digita "Comprar anzol" em uma nova caixa de texto
+
+		# e assinala prioridade alta no campo de seleção de prioridades
+
+		 
+
+		# Quando ela tecla enter, a página é atualizada, e agora
+
+		# a página lista "1 - Comprar anzol - prioridade alta"
+
+		# como um item em uma lista de tarefas
+
+		 
+
+		# Ainda continua havendo uma caixa de texto convidando-a a 
+
+		# acrescentar outro item. Ela insere "Comprar cola instantâne"
+
+		# e assinala prioridade baixa pois ela ainda tem cola suficiente
+
+		# por algum tempo
+
+		 
+
+		# A página é atualizada novamente e agora mostra os dois
+
+		# itens em sua lista e as respectivas prioridades
+
+		 
+
+		# Edith se pergunta se o site lembrará de sua lista. Então
+
+		# ela nota que o site gerou um URL único para ela -- há um 
+
+		# pequeno texto explicativo para isso.
+
+		 
+
+		# Ela acessa essa URL -- sua lista de tarefas continua lá.
+
 	def test_multiple_users_can_start_lists_at_different_urls(self):
 		# Edith inicia uma nova lista de tarefas
 		self.browser.get(self.live_server_url)
@@ -131,4 +191,56 @@ class NewVisitorTest(LiveServerTestCase):
 		self.assertNotIn('Buy peacock feathers', page_text)
 		self.assertIn('Buy milk', page_text)
 
+	def test_can_add_priority_to_tasks(self):
+		# Edith ouviu falar de uma nova aplicação online interessante
+		# para lista de tarefas com prioridade. Ela decide verificar a homepage
+		self.browser.get(self.live_server_url)
+
+		# Ela percebe que o título da página e o cabeçalho mencionam
+		# listas de tarefas com prioridade
+		self.assertIn('Priority To-Do', self.browser.title)
+		header_text = self.browser.find_element(By.TAG_NAME, 'h1').text
+		self.assertIn('Priority To-Do', header_text)
+
+		# Ela é convidada a inserir um item de tarefa e a prioridade da mesma imediatamente
+		inputbox = self.browser.find_element(By.ID, 'id_new_item')
+		self.assertEqual(
+		    inputbox.get_attribute('placeholder'),
+		    'Enter a to-do item'
+		)
+		priority_select = self.browser.find_element(By.ID, 'id_priority')
+		self.assertEqual(
+		    priority_select.find_element(By.TAG_NAME, 'option').text,
+		    'Low'
+		)
+
+		# Ela digita "Comprar anzol" e escolhe prioridade alta
+		inputbox.send_keys('Comprar anzol')
+		priority_select.send_keys('High')
+		inputbox.send_keys(Keys.ENTER)
+		time.sleep(1)
+		self.wait_for_row_in_list_table('1: Comprar anzol - High')
+
+		# Ainda continua havendo uma caixa de texto convidando-a a acrescentar outro item
+		inputbox = self.browser.find_element(By.ID, 'id_new_item')
+		inputbox.send_keys('Comprar cola instantânea')
+		priority_select.send_keys('Low')
+		inputbox.send_keys(Keys.ENTER)
+		time.sleep(1)
+
+		# A página é atualizada novamente e agora mostra os dois itens em sua lista com as respectivas prioridades
+		self.wait_for_row_in_list_table('1: Comprar anzol - High')
+		self.wait_for_row_in_list_table('2: Comprar cola instantânea - Low')
+
+		# Edith se pergunta se o site lembrará de sua lista. Então
+		# ela nota que o site gerou um URL único para ela -- há um pequeno texto explicativo para isso.
+		edith_list_url = self.browser.current_url
+		self.assertRegex(edith_list_url, '/lists/.+')
+		self.browser.quit()
+		self.browser = webdriver.Firefox()
+		self.browser.get(edith_list_url)
+
+		# Sua lista de tarefas continua lá.
+		self.wait_for_row_in_list_table('1: Comprar anzol - High')
+		self.wait_for_row_in_list_table('2: Comprar cola instantânea - Low')
 		# Fim		

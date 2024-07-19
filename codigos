@@ -1,0 +1,740 @@
+
+Estou trabalhando em um projeto para desenvolver testes funcionais, utilizando a metodologia TDD (com testes unitarios), ate agora o que tenho construido e a seguinte estrutura
+
+/home/tdd/superlists/functional_tests/tests.py
+
+from django.test import LiveServerTestCase
+from selenium import webdriver
+from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+import time
+
+MAX_WAIT = 10
+
+class NewVisitorTest(LiveServerTestCase):
+
+	def setUp(self):
+		self.browser = webdriver.Firefox()
+
+	def tearDown(self):
+		self.browser.quit()
+
+	# Auxiliary method 
+	def wait_for_row_in_list_table(self, row_text):
+		start_time = time.time()
+		while True:
+			try:
+				table = self.browser.find_element(By.ID,'id_list_table')
+				rows = table.find_elements(By.TAG_NAME, 'tr')
+				self.assertIn(row_text, [row.text for row in rows])
+				return
+			except(AssertionError, WebDriverException) as e:
+				if ((time.time() - start_time) > MAX_WAIT):
+					raise e
+				time.sleep(0.5)
+
+	def test_can_start_a_list_for_one_user(self):
+		# Edith ouviu falar de uma nova aplicação online interessante
+		# para lista de tarefas. Ela decide verificar a homepage
+
+		self.browser.get(self.live_server_url)
+
+		# Ela percebe que o título da página e o cabeçalho mencionam
+		# listas de tarefas (to-do)
+
+		self.assertIn('To-Do', self.browser.title)
+		header_text = self.browser.find_element(By.TAG_NAME, 'h1').text
+		self.assertIn('To-Do', header_text)
+		
+		# Ela é convidada a inserir um item de tarefa imediatamente
+
+		inputbox = self.browser.find_element(By.ID, 'id_new_item')
+		self.assertEqual(
+			inputbox.get_attribute('placeholder'),
+			'Enter a to-do item'
+		)
+
+		# Ela digita "Buy peacock feathers" (Comprar penas de pavão)
+		# em uma nova caixa de texto (o hobby de Edith é fazer iscas
+		# para pesca com fly)
+
+		inputbox.send_keys('Buy peacock feathers')
+
+
+		# Quando ela tecla enter, a página é atualizada, e agora
+		# a página lista "1 - Buy peacock feathers" como um item em 
+		# uma lista de tarefas
+
+		inputbox.send_keys(Keys.ENTER)
+		time.sleep(1)
+		self.wait_for_row_in_list_table('1: Buy peacock feathers')
+
+		# Ainda continua havendo uma caixa de texto convidando-a a 
+		# acrescentar outro item. Ela insere "Use peacock feathers 
+		# make a fly" (Usar penas de pavão para fazer um fly - 
+		# Edith é bem metódica)
+		inputbox = self.browser.find_element(By.ID,'id_new_item')
+		inputbox.send_keys("Use peacock feathers to make a fly")
+		inputbox.send_keys(Keys.ENTER)
+		time.sleep(1)
+
+		# A página é atualizada novamente e agora mostra os dois
+		# itens em sua lista
+		self.wait_for_row_in_list_table('1: Buy peacock feathers')
+		self.wait_for_row_in_list_table('2: Use peacock feathers to make a fly')
+
+		# Edith se pergunta se o site lembrará de sua lista. Então
+		# ela nota que o site gerou um URL único para ela -- há um 
+		# pequeno texto explicativo para isso.
+
+		# Ela acessa essa URL -- sua lista de tarefas continua lá.
+
+		# Satisfeita, ela volta a dormir
+
+		# Edith ouviu falar que agora a aplicação online de lista de tarefas
+
+		# aceita definir prioridades nas tarefas do tipo baixa, média e alta
+
+		# Ela decide verificar a homepage
+
+		 
+
+		# Ela percebe que o título da página e o cabeçalho mencionam
+
+		# listas de tarefas com prioridade (priority to-do)
+
+		 
+
+		# Ela é convidada a inserir um item de tarefa e a prioridade da 
+
+		# mesma imediatamente
+
+		 
+
+		# Ela digita "Comprar anzol" em uma nova caixa de texto
+
+		# e assinala prioridade alta no campo de seleção de prioridades
+
+		 
+
+		# Quando ela tecla enter, a página é atualizada, e agora
+
+		# a página lista "1 - Comprar anzol - prioridade alta"
+
+		# como um item em uma lista de tarefas
+
+		 
+
+		# Ainda continua havendo uma caixa de texto convidando-a a 
+
+		# acrescentar outro item. Ela insere "Comprar cola instantâne"
+
+		# e assinala prioridade baixa pois ela ainda tem cola suficiente
+
+		# por algum tempo
+
+		 
+
+		# A página é atualizada novamente e agora mostra os dois
+
+		# itens em sua lista e as respectivas prioridades
+
+		 
+
+		# Edith se pergunta se o site lembrará de sua lista. Então
+
+		# ela nota que o site gerou um URL único para ela -- há um 
+
+		# pequeno texto explicativo para isso.
+
+		 
+
+		# Ela acessa essa URL -- sua lista de tarefas continua lá.
+
+	def test_multiple_users_can_start_lists_at_different_urls(self):
+		# Edith inicia uma nova lista de tarefas
+		self.browser.get(self.live_server_url)
+		inputbox = self.browser.find_element(By.ID, 'id_new_item')
+		inputbox.send_keys('Buy peacock feathers')
+		inputbox.send_keys(Keys.ENTER)
+		self.wait_for_row_in_list_table('1: Buy peacock feathers')
+
+		#Ela percebe que sua lista te um URL único
+		edith_list_url = self.browser.current_url
+		self.assertRegex(edith_list_url, '/lists/.+')
+
+		#Agora um novo usuário, Francis, chega ao site
+
+		## Usamos uma nova versão do nagegador para garantir que nenhuma 
+		## informação de Edith está vindo de cookies, etc
+		
+		self.browser.quit()
+		self.browser = webdriver.Firefox()
+
+		# Francis acessa a página inicial. Não há sinal da lista de Edith
+		self.browser.get(self.live_server_url)
+		elements = self.browser.find_elements(By.TAG_NAME, 'body')
+		page_text = " ".join(element.text for element in elements)		
+		self.assertNotIn('Buy peacock feathers', page_text)
+		self.assertNotIn('make a fly', page_text)
+		
+		# Francis inicia uma nova lista inserindo um novo item.
+		inputbox = self.browser.find_element(By.ID, 'id_new_item')
+		inputbox.send_keys('Buy milk')
+		inputbox.send_keys(Keys.ENTER)
+		self.wait_for_row_in_list_table('1: Buy milk')
+
+		# Francis obtém seu próprio URL exclusivo
+		francis_list_url = self.browser.current_url
+		self.assertRegex(edith_list_url, '/lists/.+')
+		self.assertNotEqual( francis_list_url, edith_list_url)
+
+		# Novamente não há sinal algum da lista de Edith
+		elements = self.browser.find_elements(By.TAG_NAME, 'body')
+		page_text = " ".join(element.text for element in elements)
+		self.assertNotIn('Buy peacock feathers', page_text)
+		self.assertIn('Buy milk', page_text)
+
+		# Fim		
+
+/home/tdd/superlists/lists/migrations/0001_initial.py
+
+# Generated by Django 5.0.6 on 2024-07-06 12:44
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    initial = True
+
+    dependencies = [
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='Item',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+            ],
+        ),
+    ]
+
+
+/home/tdd/superlists/lists/migrations/0002_item_text.py
+
+# Generated by Django 5.0.6 on 2024-07-06 12:46
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('lists', '0001_initial'),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='item',
+            name='text',
+            field=models.TextField(default=''),
+        ),
+    ]
+
+/home/tdd/superlists/lists/migrations/0003_list.py
+
+# Generated by Django 5.0.6 on 2024-07-06 14:58
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('lists', '0002_item_text'),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='List',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+            ],
+        ),
+    ]
+
+/home/tdd/superlists/lists/migrations/0004_item_list.py
+
+# Generated by Django 5.0.6 on 2024-07-06 14:59
+
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('lists', '0003_list'),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='item',
+            name='list',
+            field=models.TextField(default=''),
+        ),
+    ]
+
+/home/tdd/superlists/lists/migrations/0004_alter_item_list.py
+
+# Generated by Django 5.0.6 on 2024-07-06 15:01
+
+import django.db.models.deletion
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('lists', '0004_item_list'),
+    ]
+
+    operations = [
+        migrations.AlterField(
+            model_name='item',
+            name='list',
+            field=models.ForeignKey(default=None, on_delete=django.db.models.deletion.SET_DEFAULT, to='lists.list'),
+        ),
+    ]
+
+/home/tdd/superlists/lists/templates/home.html
+
+<html>
+	<head>
+		<title>To-Do lists</title>
+	</head>
+	<body>
+		<h1>Your To-Do list</h1>
+		<form method="POST" action="/lists/new">
+			<input name="item_text" id="id_new_item" placeholder="Enter a to-do item" />
+			{% csrf_token %}
+		</form>
+	</body>
+</html>
+
+
+/home/tdd/superlists/lists/templates/list.html
+
+<html>
+	<head>
+		<title>To-Do lists</title>
+	</head>
+	<body>
+		<h1>Your To-Do list</h1>
+		<form method="POST" action="/lists/{{list.id}}/add_item">
+			<input name="item_text" id="id_new_item" placeholder="Enter a to-do item" />
+			{% csrf_token %}
+		</form>
+		<table id="id_list_table">
+			{% for item in list.item_set.all %}
+			<tr><td>{{ forloop.counter }}: {{ item.text }}</td></tr>
+			{% endfor %}
+		</table>
+	</body>
+</html>
+
+/home/tdd/superlists/lists/admin.py
+
+from django.contrib import admin
+
+# Register your models here.
+
+/home/tdd/superlists/lists/apps.py
+
+from django.apps import AppConfig
+
+
+class ListsConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'lists'
+
+/home/tdd/superlists/lists/models.py
+
+from django.db import models
+
+class List(models.Model):
+   pass
+
+class Item(models.Model):
+   text = models.TextField(default='')
+   list = models.ForeignKey(List,on_delete=models.SET_DEFAULT,default=None)
+
+/home/tdd/superlists/lists/tests.py
+
+from django.urls import resolve
+from django.test import TestCase
+from lists.views import home_page
+from lists.models import Item, List
+
+class HomePageTest(TestCase):
+
+	def test_root_url_resolves_to_home_page_view(self):
+		found = resolve('/')
+		self.assertEquals(found.func, home_page)
+
+	def test_home_page_returns_correct_html(self):
+		response = self.client.get('/')
+		self.assertTemplateUsed(response, 'home.html')
+
+	def test_only_saves_items_when_necessary(self):
+		self.client.get('/')
+		self.assertEquals(Item.objects.count(), 0)
+
+
+class NewListTest(TestCase):
+
+	def test_can_save_a_POST_request(self):
+		self.client.post('/lists/new', data={'item_text': 'A new list item'})
+		self.assertEquals(Item.objects.count(), 1)
+		new_item = Item.objects.first()
+		self.assertEquals(new_item.text, 'A new list item')
+
+	def test_redirects_after_POST(self):
+		response = self.client.post('/lists/new', data={'item_text': 'A new list item'})
+		new_list = List.objects.first()
+		self.assertRedirects(response, f'/lists/{new_list.id}/')
+
+
+class NewItemTets(TestCase):
+	def test_can_save_a_POST_request_to_an_existing_list(self):
+		other_list = List.objects.create()
+		correct_list = List.objects.create()
+
+		self.client.post(
+			f'/lists/{correct_list.id}/add_item',
+			data={'item_text': 'A new item for an existing list'}
+		)
+
+		self.assertEqual(Item.objects.count(), 1)
+		new_item = Item.objects.first()
+		self.assertEqual(new_item.text, 'A new item for an existing list')
+		self.assertEqual(new_item.list, correct_list)
+
+	def test_redirects_to_list_view(self):
+		other_list = List.objects.create()
+		correct_list = List.objects.create()
+
+		response = self.client.post(
+			f'/lists/{correct_list.id}/add_item',
+			data={'item_text': 'A new item for an existing list'}
+		)
+
+		self.assertRedirects(response, f'/lists/{correct_list.id}/')
+
+
+class ListViewTest(TestCase):
+
+	def test_uses_list_template(self):
+		list_ = List.objects.create()
+		response = self.client.get(f'/lists/{list_.id}/')
+		self.assertTemplateUsed(response, 'list.html')
+
+
+	def test_displays_only_items_for_that_list(self):
+		correct_list = List.objects.create()
+		Item.objects.create(text='itemey 1', list=correct_list)
+		Item.objects.create(text='itemey 2', list=correct_list)
+
+		other_list = List.objects.create()
+		Item.objects.create(text='other list item 1', list=other_list)
+		Item.objects.create(text='other list item 2', list=other_list)
+
+		response = self.client.get(f'/lists/{correct_list.id}/')
+
+		self.assertContains(response, 'itemey 1')
+		self.assertContains(response, 'itemey 2')
+		self.assertNotContains(response, 'other list item 1')
+		self.assertNotContains(response, 'other list item 2')
+
+	def test_passes_correct_list_to_template(self):
+		other_list = List.objects.create()
+		correct_list = List.objects.create()
+		response = self.client.get(f'/lists/{correct_list.id}/')
+		self.assertEqual(response.context['list'], correct_list)
+
+
+class ListAndItemModelTest(TestCase):
+
+	def test_saving_and_retriving_items(self):
+		list_ = List()
+		list_.save()
+
+		first_item = Item()
+		first_item.text = 'The first (ever) list item'
+		first_item.list = list_
+		first_item.save()
+
+		second_item = Item()
+		second_item.text = 'Item the second'
+		second_item.list = list_
+		second_item.save()
+
+		saved_list = List.objects.first()
+		self.assertEquals(saved_list, list_)
+
+		saved_items = Item.objects.all()
+		self.assertEquals(saved_items.count(),2)
+
+		first_saved_item = saved_items[0]
+		second_saved_item = saved_items[1]
+
+		self.assertEquals(first_saved_item.text, 'The first (ever) list item')
+		self.assertEquals(first_saved_item.list, list_)
+		self.assertEquals(second_saved_item.text, 'Item the second')
+		self.assertEquals(second_saved_item.list, list_)
+
+
+/home/tdd/superlists/lists/urls.py
+
+from django.urls import re_path
+from lists import views
+
+urlpatterns = [
+    re_path(r'^new$', views.new_list, name='new_list'),
+    re_path(r'^(\d+)/$', views.view_list, name='view_list'),
+    re_path(r'^(\d+)/add_item$', views.add_item, name='add_item'),
+]
+
+/home/tdd/superlists/lists/views.py
+
+from django.shortcuts import redirect, render
+from lists.models import Item, List
+
+def home_page(request):
+	return render(request, 'home.html')
+
+def view_list(request, list_id):
+	list_ = List.objects.get(id=list_id)
+	return render(request, 'list.html', {'list': list_})
+
+def new_list(request):
+	list_ = List.objects.create()
+	Item.objects.create(text=request.POST['item_text'], list=list_)
+	return redirect(f'/lists/{list_.id}/')
+
+def add_item(request, list_id):
+	list_ = List.objects.get(id=list_id)
+	Item.objects.create(text=request.POST['item_text'], list=list_)
+	return redirect(f'/lists/{list_.id}/')
+
+/home/tdd/superlists/superlists/asgi.py
+
+"""
+ASGI config for superlists project.
+
+It exposes the ASGI callable as a module-level variable named ``application``.
+
+For more information on this file, see
+https://docs.djangoproject.com/en/5.0/howto/deployment/asgi/
+"""
+
+import os
+
+from django.core.asgi import get_asgi_application
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'superlists.settings')
+
+application = get_asgi_application()
+
+/home/tdd/superlists/superlists/settings.py
+
+"""
+Django settings for superlists project.
+
+Generated by 'django-admin startproject' using Django 5.0.6.
+
+For more information on this file, see
+https://docs.djangoproject.com/en/5.0/topics/settings/
+
+For the full list of settings and their values, see
+https://docs.djangoproject.com/en/5.0/ref/settings/
+"""
+
+from pathlib import Path
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+# Quick-start development settings - unsuitable for production
+# See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = 'django-insecure-b5#a30mgv6wx65ssgxz+5pjw(14=x%+kl^p55cq1p8kwxta_9l'
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = True
+
+ALLOWED_HOSTS = []
+
+
+# Application definition
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'lists'
+]
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'superlists.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'superlists.wsgi.application'
+
+
+# Database
+# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+
+# Password validation
+# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+
+# Internationalization
+# https://docs.djangoproject.com/en/5.0/topics/i18n/
+
+LANGUAGE_CODE = 'en-us'
+
+TIME_ZONE = 'UTC'
+
+USE_I18N = True
+
+USE_TZ = True
+
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.0/howto/static-files/
+
+STATIC_URL = 'static/'
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+/home/tdd/superlists/superlists/urls.py
+
+from django.conf.urls import include
+from django.urls import re_path
+from lists import views as list_views
+from lists import urls as list_urls
+
+urlpatterns = [
+    re_path(r'^$', list_views.home_page, name='home'),
+    re_path(r'^lists/', include(list_urls)),
+]
+
+
+/home/tdd/superlists/superlists/wsgi.py
+
+"""
+WSGI config for superlists project.
+
+It exposes the WSGI callable as a module-level variable named ``application``.
+
+For more information on this file, see
+https://docs.djangoproject.com/en/5.0/howto/deployment/wsgi/
+"""
+
+import os
+
+from django.core.wsgi import get_wsgi_application
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'superlists.settings')
+
+application = get_wsgi_application()
+
+
+/home/tdd/superlists/manage.py
+
+#!/usr/bin/env python
+"""Django's command-line utility for administrative tasks."""
+import os
+import sys
+
+
+def main():
+    """Run administrative tasks."""
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'superlists.settings')
+    try:
+        from django.core.management import execute_from_command_line
+    except ImportError as exc:
+        raise ImportError(
+            "Couldn't import Django. Are you sure it's installed and "
+            "available on your PYTHONPATH environment variable? Did you "
+            "forget to activate a virtual environment?"
+        ) from exc
+    execute_from_command_line(sys.argv)
+
+
+if __name__ == '__main__':
+    main()
+
+
+
+
+
+
