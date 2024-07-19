@@ -31,6 +31,13 @@ class NewListTest(TestCase):
 		new_list = List.objects.first()
 		self.assertRedirects(response, f'/lists/{new_list.id}/')
 
+	def test_can_save_a_POST_request_with_priority(self):
+		self.client.post('/lists/new', data={'item_text': 'A new list item', 'priority': 'High'})
+		self.assertEqual(Item.objects.count(), 1)
+		new_item = Item.objects.first()
+		self.assertEqual(new_item.text, 'A new list item')
+		self.assertEqual(new_item.priority, 'High')
+
 
 class NewItemTets(TestCase):
 	def test_can_save_a_POST_request_to_an_existing_list(self):
@@ -88,6 +95,16 @@ class ListViewTest(TestCase):
 		correct_list = List.objects.create()
 		response = self.client.get(f'/lists/{correct_list.id}/')
 		self.assertEqual(response.context['list'], correct_list)
+
+	def test_displays_items_with_priorities(self):
+		correct_list = List.objects.create()
+		Item.objects.create(text='itemey 1', priority='Low', list=correct_list)
+		Item.objects.create(text='itemey 2', priority='High', list=correct_list)
+
+		response = self.client.get(f'/lists/{correct_list.id}/')
+
+		self.assertContains(response, 'itemey 1 - Low')
+		self.assertContains(response, 'itemey 2 - High')
 
 
 class ListAndItemModelTest(TestCase):
